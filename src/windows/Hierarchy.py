@@ -24,8 +24,6 @@ class OrderedPairs(Hierarchy):
         key = 0
 
         for element1 in base_items:
-            for element2 in base_items:
-                if element1 != element2:
-                    self.mapping[key] = [element1, element2]
-                    key += 1
-
+            for element2 in range(element1+1, base_items[-1]+1):
+                self.mapping[key] = [element1, element2]
+                key += 1
