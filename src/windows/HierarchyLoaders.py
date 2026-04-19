@@ -27,7 +27,7 @@ class SpreadEnergyDataLoader(HierarchyLoader):
     def __init__(self, market: str, series: int, efficiency: float = 0.9, **kwargs):
         pair = OrderedPairs(24).get(series)
 
-        first_loader = EnergyDataLoader(market, pair[0], date_col=date_col, **kwargs)
+        first_loader = EnergyDataLoader(market, pair[0], **kwargs)
         
         date_col = first_loader.date_col
         main_col = first_loader.main_col
@@ -35,7 +35,7 @@ class SpreadEnergyDataLoader(HierarchyLoader):
         externals = first_loader.externals
         
         first_frame = first_loader.get()
-        second_frame = EnergyDataLoader(market, pair[1], date_col=date_col, **kwargs).get()
+        second_frame = EnergyDataLoader(market, pair[1], **kwargs).get()
         self.frame = first_frame.join(second_frame.drop(['weekday', 'max', 'min']), on=date_col, how='full')
         self.frame = self.frame.select(
             polars.col([date_col, 'weekday', 'max', 'min']),
