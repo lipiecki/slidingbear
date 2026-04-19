@@ -2,7 +2,7 @@ import numpy
 import polars
 
 from .helpers import get_maxlag
-from .ZScore import ZScore
+from .Transforms import Transform, match_transform
 
 class WindowLoader:
     def __init__(
@@ -11,10 +11,11 @@ class WindowLoader:
             structure: dict,
             target: str,
             id: str,
+            transform_name: str = 'zscore',
             transform_vars: list = [],
             onehot_vars: list = [],
             sign_inverse: list = [],
-            copy_vars: list = []
+            copy_vars: list = [],
             ):
         
         self.maxlag = get_maxlag(structure)
@@ -53,7 +54,8 @@ class WindowLoader:
                 self.transform_exo.append(True if var in transform_vars else False)
 
         self.frame: polars.LazyFrame = data.select(polars.col([self.id, self.target] + self.exogenous)).lazy()
-        self.transform: ZScore = None
+        self.transform_name: str = transform_name
+        self.transform: Transform = None
         self.got_window: bool = False
 
     def get_row(self, id):
@@ -70,7 +72,7 @@ class WindowLoader:
             ).collect().item()
 
     def get_window(self, index:int, window:int):    
-        self.transform = ZScore(len(self.exogenous)+1)
+        self.transform = match_transform(self.transform_name)(len(self.exogenous)+1)
 
         data = self.frame.slice(index-window-self.maxlag, window+self.maxlag).collect()
         data = data.drop_nulls()
