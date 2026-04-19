@@ -71,11 +71,12 @@ class WindowLoader:
             ).collect().item()
 
     def get_window(self, index:int, window:int):    
-        
-        data = self.data.slice(index-window-self.maxlag, window+self.maxlag).collect()
         self.transform = ZScore(len(self.exogenous)+1)
 
+        data = self.data.slice(index-window-self.maxlag, window+self.maxlag).collect()
         data = data.drop_nulls()
+            
+        yraw = data.select(polars.col(self.target)).tail(window).to_numpy() # prior to transformation
 
         if self.transform_target:
             if len(self.autolags) > 1:
@@ -129,7 +130,7 @@ class WindowLoader:
         y = data.select(polars.col(self.target)).tail(window).to_numpy()
 
         self.got_window = True
-        return x, y, self.transform
+        return x, y, yraw
     
     def get_future(self, index:int, horizon:int):
         assert self.got_window, "a window must be obtained before future values can be retrieved"
