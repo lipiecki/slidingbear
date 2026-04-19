@@ -35,7 +35,6 @@ class WindowLoader:
             data = data.with_columns(polars.col(var).alias(f'{var}_copy'))
             structure['exogenous'][f'{var}_copy'] = structure['exogenous'][var]
     
-        data = data.collect()
         for var in structure['exogenous'].keys():
             if var in onehot_vars:
                 dumdata = data.select(polars.col(var)).to_dummies()
@@ -53,27 +52,27 @@ class WindowLoader:
                 self.exogenous.append(var)
                 self.transform_exo.append(True if var in transform_vars else False)
 
-        self.data: polars.LazyFrame = data.select(polars.col([self.id, self.target] + self.exogenous))
+        self.frame: polars.LazyFrame = data.select(polars.col([self.id, self.target] + self.exogenous)).lazy()
         self.transform: ZScore = None
         self.got_window: bool = False
 
     def get_row(self, id):
         return (
-            self.data.with_row_index()
+            self.frame.with_row_index()
             .filter((polars.col(self.id) == id))
             .select(polars.col('index'))
             ).collect().item()
     
     def get_id(self, row):
         return (
-            self.data.slice(row, 1)
+            self.frame.slice(row, 1)
             .select(polars.col(self.id))
             ).collect().item()
 
     def get_window(self, index:int, window:int):    
         self.transform = ZScore(len(self.exogenous)+1)
 
-        data = self.data.slice(index-window-self.maxlag, window+self.maxlag).collect()
+        data = self.frame.slice(index-window-self.maxlag, window+self.maxlag).collect()
         data = data.drop_nulls()
             
         yraw = data.select(polars.col(self.target)).tail(window).to_numpy() # prior to transformation
@@ -135,7 +134,7 @@ class WindowLoader:
     def get_future(self, index:int, horizon:int):
         assert self.got_window, "a window must be obtained before future values can be retrieved"
 
-        data = self.data.slice(index-self.maxlag, self.maxlag+horizon).collect()
+        data = self.frame.slice(index-self.maxlag, self.maxlag+horizon).collect()
 
         yraw = data.select(polars.col(self.target)).tail(horizon).to_numpy() # prior to transformation
 

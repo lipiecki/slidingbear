@@ -22,11 +22,11 @@ class DataLoader:
                             polars.col('brent')
                         ), on={'date', 'hour'}, how='inner'
                     )
-                )
-                self.frame = self.frame.filter(
+                ).filter(
                     polars.col('hour')==hour
-                    ).select(polars.col(['date', 'price', 'load_da', 'res_da', 'ttf', 'api', 'eua', 'brent', 'weekday'])
-                    ).sort(polars.col('date'))
+                ).select(polars.col(['date', 'price', 'load_da', 'res_da', 'ttf', 'api', 'eua', 'brent', 'weekday'])
+                ).sort(polars.col('date'))
+                
             case _:
                 raise ValueError("unknown market")
 
