@@ -1,0 +1,9 @@
+*.py[oc]
+*.egg-info
+__pycache__/
+build/
+dist/
+wheels/
+.venv/
+*.lock
+*.DS_Store
