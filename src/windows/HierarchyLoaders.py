@@ -16,10 +16,10 @@ class BlockEnergyDataLoader(HierarchyLoader):
         self.frame = first_loader.get()
 
         for hour in block[1:]:
-            self.frame = self.frame.append(EnergyDataLoader(market, hour, **kwargs).get())
+            self.frame = self.frame.append(EnergyDataLoader(market, hour, **kwargs).get().drop(['weekday', 'max', 'min']))
         
         self.frame = self.frame.group_by().agg(
-            polars.all().exclude(date_col, 'weekday').sum()
+            polars.all().exclude(date_col, 'weekday', 'max', 'min').sum()
         ).sort(polars.col(date_col))
 
 class SpreadEnergyDataLoader(HierarchyLoader):
@@ -35,9 +35,9 @@ class SpreadEnergyDataLoader(HierarchyLoader):
         
         first_frame = first_loader.get()
         second_frame = EnergyDataLoader(market, pair[1], date_col=date_col, **kwargs).get()
-        self.frame = first_frame.join(second_frame, on=date_col, how='full')
+        self.frame = first_frame.join(second_frame.drop(['weekday', 'max', 'min']), on=date_col, how='full')
         self.frame = self.frame.select(
-            polars.col([date_col, 'weekday']),
+            polars.col([date_col, 'weekday', 'max', 'min']),
             (polars.col(f'{main_col}_right')*efficiency - polars.col(f'{main_col}_left')*(1/efficiency)).alias(main_col),
             *[(polars.col(f'{col}_right')*efficiency - polars.col(f'{col}_left')*(1/efficiency)).alias(f'{col}') for col in internals]
             *[(polars.col(f'{col}_right')/2 + polars.col(f'{col}_left')/2).alias(f'{col}') for col in externals]
