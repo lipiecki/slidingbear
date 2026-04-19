@@ -7,7 +7,7 @@ from .ZScore import ZScore
 class WindowLoader:
     def __init__(
             self, 
-            data: polars.LazyFrame,
+            data: polars.DataFrame,
             structure: dict,
             target: str,
             id: str,
@@ -23,7 +23,7 @@ class WindowLoader:
         self.target = target
         self.autolags = structure['autolags']
         self.transform_target = True if target in transform_vars else False
-
+        
         if target in sign_inverse:
             data = data.with_columns((-polars.col(target)).alias(target))
 

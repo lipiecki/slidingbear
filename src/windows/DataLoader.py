@@ -25,8 +25,8 @@ class DataLoader:
                 ).filter(
                     polars.col('hour')==hour
                 ).select(polars.col(['date', 'price', 'load_da', 'res_da', 'ttf', 'api', 'eua', 'brent', 'weekday'])
-                ).sort(polars.col('date'))
-                
+                ).sort(polars.col('date')).collect()
+
             case _:
                 raise ValueError("unknown market")
 
