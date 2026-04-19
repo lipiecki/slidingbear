@@ -30,7 +30,7 @@ class EnergyDataLoader:
                     )
                 ).filter(
                     polars.col(hour_col)==hour
-                ).select(polars.col([date_col, main_col, *internals, *externals])
+                ).select(polars.col([date_col, main_col, *internals, *list(mappings.values()), *externals])
                 ).sort(polars.col(date_col)).collect()
 
             case _:
@@ -39,7 +39,7 @@ class EnergyDataLoader:
         self.main_col = main_col
         self.date_col = date_col
         self.hour_col = hour_col
-        self.internals = internals + list(mappings.values()) if mappings is not None else internals 
+        self.internals = internals + list(mappings.values())
         self.externals = externals
 
     def get(self):

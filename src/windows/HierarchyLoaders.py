@@ -4,9 +4,6 @@ from .DataLoaders import EnergyDataLoader
 from .Hierarchy import Blocks, OrderedPairs
 
 class HierarchyLoader(ABC):
-    def __init__(self, market: str, series: int, **kwargs):
-        pass
-
     def get(self):
         return self.frame
     
