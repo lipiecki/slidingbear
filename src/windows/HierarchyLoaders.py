@@ -40,6 +40,6 @@ class SpreadEnergyDataLoader(HierarchyLoader):
         self.frame = self.frame.select(
             polars.col([date_col, 'weekday', 'max', 'min']),
             (polars.col(f'{main_col}_right')*efficiency - polars.col(f'{main_col}_left')*(1/efficiency)).alias(main_col),
-            *[(polars.col(f'{colname}_right')*efficiency - polars.col(f'{colname}_left')*(1/efficiency)).alias(f'{colname}') for colname in internals]
+            *[(polars.col(f'{colname}_right')*efficiency - polars.col(f'{colname}_left')*(1/efficiency)).alias(f'{colname}') for colname in internals],
             *[(polars.col(f'{colname}_right')/2 + polars.col(f'{colname}_left')/2).alias(f'{colname}') for colname in externals]
         ).sort(polars.col(date_col))
