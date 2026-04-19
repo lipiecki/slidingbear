@@ -17,7 +17,7 @@ class EnergyDataLoader:
                     .select(
                         polars.col([date_col, hour_col, main_col, *internals]),
                         polars.all().exclude([date_col, hour_col, main_col]).fill_nan(0),
-                        *[polars.horizontal_sum(polars.col(map_from)).alias(map_to) for map_to, map_from in mappings.items()],
+                        *[polars.sum_horizontal(polars.col(map_from)).alias(map_to) for map_to, map_from in mappings.items()],
                         polars.col(date_col).cast(polars.String).str.to_date('%Y%m%d').dt.weekday().alias('weekday')
                     )
                     .join(
