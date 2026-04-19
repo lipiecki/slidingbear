@@ -24,7 +24,7 @@ class BlockEnergyDataLoader(HierarchyLoader):
         ).sort(polars.col(date_col))
 
 class SpreadEnergyDataLoader(HierarchyLoader):
-    def __init__(self, market: str, series: int, efficiency: float = 0.9, **kwargs):
+    def __init__(self, market: str, series: int, efficiency: float=0.9, **kwargs):
         pair = OrderedPairs(24).get(series)
 
         first_loader = EnergyDataLoader(market, pair[0], **kwargs)
@@ -40,6 +40,6 @@ class SpreadEnergyDataLoader(HierarchyLoader):
         self.frame = self.frame.select(
             polars.col([date_col, 'weekday', 'max', 'min']),
             (polars.col(f'{main_col}_right')*efficiency - polars.col(f'{main_col}_left')*(1/efficiency)).alias(main_col),
-            *[(polars.col(f'{col}_right')*efficiency - polars.col(f'{col}_left')*(1/efficiency)).alias(f'{col}') for col in internals]
-            *[(polars.col(f'{col}_right')/2 + polars.col(f'{col}_left')/2).alias(f'{col}') for col in externals]
+            *[(polars.col(f'{colname}_right')*efficiency - polars.col(f'{colname}_left')*(1/efficiency)).alias(f'{colname}') for colname in internals]
+            *[(polars.col(f'{colname}_right')/2 + polars.col(f'{colname}_left')/2).alias(f'{colname}') for colname in externals]
         ).sort(polars.col(date_col))
