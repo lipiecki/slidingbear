@@ -16,10 +16,10 @@ class BlockEnergyDataLoader(HierarchyLoader):
         self.frame = first_loader.get()
 
         for hour in block[1:]:
-            self.frame = self.frame.vstack(EnergyDataLoader(market, hour, **kwargs).get())
-
-        self.frame = self.frame.group_by(date_col).agg(
-            polars.col([date_col, 'weekday']).first(),
+            self.frame.vstack(EnergyDataLoader(market, hour, **kwargs).get(), in_place=True)
+        
+        self.frame = self.frame.group_by(polars.col(date_col)).agg(
+            polars.col('weekday').first(),
             polars.all().exclude(date_col, 'weekday').mean()
         ).sort(polars.col(date_col))
 
