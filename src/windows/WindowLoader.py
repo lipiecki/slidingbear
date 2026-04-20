@@ -11,7 +11,7 @@ class WindowLoader:
             structure: dict,
             target: str,
             id: str,
-            transform_name: str = 'zscore',
+            transform: str = 'zscore',
             transform_vars: list = [],
             onehot_vars: list = [],
             sign_inverse: list = [],
@@ -54,7 +54,7 @@ class WindowLoader:
                 self.transform_exo.append(True if var in transform_vars else False)
 
         self.frame: polars.LazyFrame = data.select(polars.col([self.id, self.target] + self.exogenous)).lazy()
-        self.transform_name: str = transform_name
+        self.transform_name: str = transform
         self.transform: Transform = None
         self.got_window: bool = False
 
