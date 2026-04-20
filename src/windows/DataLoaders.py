@@ -16,10 +16,12 @@ class EnergyDataLoader:
             .select(polars.col([date_col, hour_col, main_col, *internals]))
             .with_columns(
                 polars.all().exclude([date_col, hour_col, main_col]).fill_nan(fill_nan),
-                *[polars.sum_horizontal(polars.col(map_from)).alias(map_to) for map_to, map_from in mappings.items()],
                 polars.col(main_col).max().over(date_col).alias('max'),
                 polars.col(main_col).min().over(date_col).alias('min'),
                 polars.col(date_col).cast(polars.String).str.to_date('%Y%m%d').dt.weekday().alias('weekday')
+            )
+            .with_columns(
+                *[polars.sum_horizontal(polars.col(map_from)).alias(map_to) for map_to, map_from in mappings.items()]
             )
             .join(
                 polars.scan_csv(f'{source}/external.csv', separator=',', has_header=True, infer_schema_length=10000)
