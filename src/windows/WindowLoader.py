@@ -22,7 +22,7 @@ class WindowLoader:
         self.id = id
 
         self.target = target
-        self.autolags = structure['autolags']
+        self.autolags = [*structure['autolags']]
         self.transform_target = True if target in transform_vars else False
         
         if target in sign_inverse:
@@ -34,7 +34,7 @@ class WindowLoader:
 
         for var in copy_vars:
             data = data.with_columns(polars.col(var).alias(f'{var}_copy'))
-            structure['exogenous'][f'{var}_copy'] = structure['exogenous'][var]
+            structure['exogenous'][f'{var}_copy'] = [*structure['exogenous'][var]]
     
         for var in structure['exogenous'].keys():
             if var in onehot_vars:
@@ -43,13 +43,13 @@ class WindowLoader:
                 for new_var in dumdata.columns:
                     if var in sign_inverse:
                         data = data.with_columns((-(polars.col(new_var).cast(polars.Int16))).alias(new_var))
-                    self.exolags.append(structure['exogenous'][var])
+                    self.exolags.append([*structure['exogenous'][var]])
                     self.exogenous.append(new_var)
                     self.transform_exo.append(True if var in transform_vars else False)
             else:
                 if var in sign_inverse:
                     data = data.with_columns((-polars.col(var)).alias(var))
-                self.exolags.append(structure['exogenous'][var])
+                self.exolags.append([*structure['exogenous'][var]])
                 self.exogenous.append(var)
                 self.transform_exo.append(True if var in transform_vars else False)
 
