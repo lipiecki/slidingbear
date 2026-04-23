@@ -52,7 +52,7 @@ class WindowLoader:
                 self.exogenous.append(var)
                 self.transform_exo.append(True if var in transform_vars else False)
 
-        self.frame: polars.LazyFrame = data.select(polars.col([self.id, self.target] + self.exogenous)).lazy()
+        self.frame: polars.DateFrame= data.select(polars.col([self.id, self.target] + self.exogenous))
         self.transform_name: str = transform
         self.transform: Transform = None
         self.got_window: bool = False
@@ -62,72 +62,68 @@ class WindowLoader:
             self.frame.with_row_index()
             .filter((polars.col(self.id) == id))
             .select(polars.col('index'))
-            ).collect().item()
+            ).item()
     
     def get_id(self, row):
         return (
             self.frame.slice(row, 1)
             .select(polars.col(self.id))
-            ).collect().item()
+            ).item()
 
     def get_window(self, index:int, window:int):    
         self.transform = match_transform(self.transform_name)(len(self.exogenous)+1)
 
-        data = self.frame.slice(index-window-self.maxlag, window+self.maxlag).collect()
-        data = data.drop_nulls()
-            
-        yraw = data.select(polars.col(self.target)).tail(window).to_numpy() # prior to transformation
-
+        data = self.frame.slice(index-window-self.maxlag, window+self.maxlag)
+        data = data.with_columns(polars.col(self.target).alias('yraw'))  
+        
+        polars_expressions = []
         if self.transform_target:
             if len(self.autolags) > 1:
-                auto_maxlag = max(*self.autolags)
+                auto_maxlag = max(self.autolags)
             elif len(self.autolags) == 1:
                 auto_maxlag = self.autolags[0]
             else:
                 auto_maxlag = 0
-            data_ = data.select(polars.col(self.target)).slice(self.maxlag-auto_maxlag, window+auto_maxlag)
-            mu = data_.mean().item()
-            sigma = data_.std(ddof=1).item()
+            data_ = data.select(polars.col(self.target)).slice(self.maxlag-auto_maxlag, window+auto_maxlag).to_numpy().ravel()
+            mu = numpy.mean(data_)
+            sigma = numpy.std(data_, ddof=1)
             self.transform.set_loc(mu, -1)
             self.transform.set_scale(sigma, -1)
-            data = data.with_columns(self.transform.forward(polars.col(self.target), -1).alias(self.target))
+            polars_expressions.append(self.transform.forward(polars.col(self.target), -1).alias(self.target))
 
         for i, var in enumerate(self.exogenous):
             if self.transform_exo[i]:
                 if len(self.exolags[i]) > 1:
-                    var_minlag = min(*self.exolags[i])
-                    var_maxlag = max(*self.exolags[i])
+                    var_minlag = min(self.exolags[i])
+                    var_maxlag = max(self.exolags[i])
                 elif len(self.exolags[i]) == 1:
                     var_minlag = self.exolags[i][0]
                     var_maxlag = var_minlag
                 else:
                     var_minlag = 0
                     var_maxlag = 0
-                data_ = data.select(polars.col(var)).slice(self.maxlag-var_maxlag, window+var_maxlag-var_minlag)
-                mu = data_.mean().item()
-                sigma = data_.std(ddof=1).item()
+                data_ = data.select(polars.col(var)).slice(self.maxlag-var_maxlag, window+var_maxlag-var_minlag).to_numpy().ravel()
+                mu = numpy.mean(data_)
+                sigma = numpy.std(data_, ddof=1)
                 self.transform.set_loc(mu, i)
                 self.transform.set_scale(sigma, i)
-                data = data.with_columns(self.transform.forward(polars.col(var), i).alias(var))
+                polars_expressions.append(self.transform.forward(polars.col(var), i).alias(var))
 
-        x = numpy.full(window, numpy.nan)
+        # apply the transformations
+        if len(polars_expressions) > 0:
+            data = data.with_columns(*polars_expressions)
+
+        data = data.with_columns(
+            *[polars.col(self.target).shift(lag).alias(f'{self.target}_lag{lag}') for lag in self.autolags],
+            *[polars.col(col).shift(lag).alias(f'{col}_lag{lag}') for i, col in enumerate(self.exogenous) for lag in self.exolags[i]]
+        ).tail(window)
         
-        if len(self.autolags) > 0:
-            x = numpy.column_stack((x, data.select(
-                    *[polars.col(self.target).shift(lag).alias(f'{self.target}_lag{lag}') for lag in self.autolags]
-                ).tail(window).to_numpy()))
-    
-        for i, col in enumerate(self.exogenous):
-            x = numpy.column_stack((x, data.select(
-                    *[polars.col(col).shift(lag).alias(f'{col}_lag{lag}') for lag in self.exolags[i]]
-                ).tail(window).to_numpy()))
-        
-        try:
-            x = x[:, 1:]
-        except IndexError:
-            raise ValueError("at least one auto or exogenous lag are required")
-    
-        y = data.select(polars.col(self.target)).tail(window).to_numpy()
+        x = data.select(
+            *[polars.col(f'{self.target}_lag{lag}') for lag in self.autolags],
+            *[polars.col(f'{col}_lag{lag}') for i, col in enumerate(self.exogenous) for lag in self.exolags[i]]
+        ).to_numpy()
+        y = data.select(polars.col(self.target)).to_numpy() # post transformation
+        yraw = data.select(polars.col('yraw')).to_numpy() # pre transformation
 
         self.got_window = True
         return x, y, yraw
@@ -135,9 +131,8 @@ class WindowLoader:
     def get_future(self, index:int, horizon:int):
         assert self.got_window, "a window must be obtained before future values can be retrieved"
 
-        data = self.frame.slice(index-self.maxlag, self.maxlag+horizon).collect()
-
-        yraw = data.select(polars.col(self.target)).tail(horizon).to_numpy() # prior to transformation
+        data = self.frame.slice(index-self.maxlag, self.maxlag+horizon)
+        data = data.with_columns(polars.col(self.target).alias('yraw'))
 
         if self.transform_target:
             data = data.with_columns(self.transform.forward(polars.col(self.target), -1).alias(self.target))
@@ -149,21 +144,20 @@ class WindowLoader:
                     .alias(var)
                 )
         
-        x = numpy.full(horizon, numpy.nan)
+        data = data.with_columns(
+            *[polars.col(self.target).shift(lag).alias(f'{self.target}_lag{lag}') for lag in self.autolags],
+            *[polars.col(col).shift(lag).alias(f'{col}_lag{lag}') for i, col in enumerate(self.exogenous) for lag in self.exolags[i]]
+        )
         
-        if len(self.autolags) > 0:
-            x = numpy.column_stack((x,data.select(
-                    *[polars.col(self.target).shift(lag).alias(f'{self.target}_lag{lag}') for lag in self.autolags]
-                ).tail(horizon).to_numpy()))
-            
-        for i, col in enumerate(self.exogenous):
-            x = numpy.column_stack((x, data.select(
-                    *[polars.col(col).shift(lag).alias(f'{col}_lag{lag}') for lag in self.exolags[i]]
-                ).tail(horizon).to_numpy()))
-        
-        x = x[:, 1:]
-        y = data.select(polars.col(self.target)).tail(horizon).to_numpy() # post transformation
+        data = data.tail(horizon)
 
+        x = data.select(
+            *[polars.col(f'{self.target}_lag{lag}') for lag in self.autolags],
+            *[polars.col(f'{col}_lag{lag}') for i, col in enumerate(self.exogenous) for lag in self.exolags[i]]
+        ).to_numpy()
+        
+        y = data.select(polars.col(self.target)).to_numpy() # post transformation
+        yraw = data.select(polars.col('yraw')).to_numpy() # pre transformation
         return x, y, yraw
 
     def invert_out(self, pred):
