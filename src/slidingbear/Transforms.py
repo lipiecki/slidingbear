@@ -10,6 +10,20 @@ class Transform(ABC):
     def backward(self, z, var: int):
         pass
 
+    @abstractmethod
+    def backward_scale(self, z, var: int):
+        pass
+
+    def set_loc(self, loc, var: int):
+        self.loc[var] = loc
+    
+    def set_scale(self, scale, var: int):
+        self.scale[var] = scale
+
+    def unset(self, var: int):
+        self.loc[var] = 0.0
+        self.scale[var] = 1.0
+
 class ZScore(Transform):
     def __init__(self, num_vars: int):
         self.loc = numpy.full(num_vars, 0.0)
@@ -24,17 +38,6 @@ class ZScore(Transform):
     def backward_scale(self, z, var: int):
         return z*self.scale[var]
 
-    def set_loc(self, loc, var: int):
-        self.loc[var] = loc
-    
-    def set_scale(self, scale, var: int):
-        self.scale[var] = scale
-
-    def unset(self, var: int):
-        self.loc[var] = 0.0
-        self.scale[var] = 1.0
-
-
 class Asinh(Transform):
     def __init__(self, num_vars: int):
         self.loc = numpy.full(num_vars, 0.0)
@@ -48,16 +51,6 @@ class Asinh(Transform):
 
     def backward_scale(self, z, var: int):
         return numpy.sinh(z)*self.scale[var]
-
-    def set_loc(self, loc, var: int):
-        self.loc[var] = loc
-    
-    def set_scale(self, scale, var: int):
-        self.scale[var] = scale
-
-    def unset(self, var: int):
-        self.loc[var] = 0.0
-        self.scale[var] = 1.0
 
 def match_transform(transform_name: str):
     match transform_name:
