@@ -59,4 +59,5 @@ def match_transform(transform_name: str):
         case "asinh":
             return Asinh
         case _:
-            raise ValueError("unknown transform")
+            return None
+        
