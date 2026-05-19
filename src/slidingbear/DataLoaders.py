@@ -96,7 +96,7 @@ class EnergyDataLoader:
                             "first",
                         ]
                     ).mean(),
-                    polars.col([date_col, "weekday"]).first()
+                    polars.col("weekday").first()
                 )
             )
 
