@@ -5,7 +5,7 @@ class EnergyDataLoader:
     def __init__(
         self,
         market: str,
-        hour: int,
+        hour: int = None,
         source: str = "source-data",
         internals: list[str] = [],
         externals: list[str] = [],
@@ -32,6 +32,7 @@ class EnergyDataLoader:
                     polars.col(main_col).max().over(date_col).alias("max"),
                     polars.col(main_col).min().over(date_col).alias("min"),
                     polars.col(main_col).last().over(date_col).alias("last"),
+                    polars.col(main_col).first().over(date_col).alias("first"),
                     polars.col(date_col)
                     .cast(polars.String)
                     .str.to_date("%Y%m%d")
@@ -59,7 +60,7 @@ class EnergyDataLoader:
                     how="inner",
                 )
             )
-            .filter(polars.col(hour_col) == hour)
+            .filter(polars.col(hour_col) == hour if hour is not None else True)
             .select(
                 polars.col(
                     [
@@ -71,6 +72,7 @@ class EnergyDataLoader:
                         "max",
                         "min",
                         "last",
+                        "first",
                         "weekday",
                     ]
                 )
@@ -78,10 +80,28 @@ class EnergyDataLoader:
             .sort(polars.col(date_col))
             .collect()
         )
+        if hour is None:
+            self.frame = (
+                self.frame
+                .group_by(date_col).agg(
+                    polars.col(
+                        [
+                            main_col,
+                            *internals,
+                            *list(mappings.keys()),
+                            *externals,
+                            "max",
+                            "min",
+                            "last",
+                            "first",
+                        ]
+                    ).mean(),
+                    polars.col([date_col, "weekday"]).first()
+                )
+            )
 
         self.main_col = main_col
         self.date_col = date_col
-        self.hour_col = hour_col
         self.internals = [*(internals + list(mappings.keys()))]
         self.externals = [*externals]
 
