@@ -52,7 +52,7 @@ class EnergyDataLoader:
                     [
                         date_col,
                         main_col,
-                        *[polars.col(intern).fill_nan(fill_nan) for intern in internals],
+                        *internals,
                         *list(mappings.keys()),
                         "max",
                         "min",
@@ -84,18 +84,7 @@ class EnergyDataLoader:
             self.frame = (
                 self.frame
                 .group_by(date_col).agg(
-                    polars.col(
-                        [
-                            main_col,
-                            *internals,
-                            *list(mappings.keys()),
-                            *externals,
-                            "max",
-                            "min",
-                            "last",
-                            "first",
-                        ]
-                    ).mean(),
+                    polars.all().exclude("date_col", "hour_col", "weekday").mean(),
                     polars.col("weekday").first()
                 )
             )
