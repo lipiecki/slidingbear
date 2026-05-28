@@ -8,7 +8,7 @@ class EnergyDataLoader:
         hour: int = None,
         source: str = "source-data",
         internals: list[str] = [],
-        externals: list[str] = [],
+        externals: list[str] = None,
         mappings: dict[str, list] = {},
         main_col: str = "price",
         date_col: str = "date",
@@ -45,20 +45,6 @@ class EnergyDataLoader:
                         for map_to, map_from in mappings.items()
                     ]
                 )
-                .join(
-                    polars.scan_csv(
-                        f"{source}/external.csv",
-                        separator=",",
-                        has_header=True,
-                        infer_schema_length=10000,
-                    )
-                    .select(polars.col([date_col, hour_col, *externals]))
-                    .with_columns(
-                        polars.all().exclude([date_col, hour_col]).fill_nan(fill_nan)
-                    ),
-                    on={date_col, hour_col},
-                    how="inner",
-                )
             )
             .filter(polars.col(hour_col) == hour if hour is not None else True)
             .select(
@@ -66,9 +52,8 @@ class EnergyDataLoader:
                     [
                         date_col,
                         main_col,
-                        *internals,
+                        *[polars.col(intern).fill_nan(fill_nan) for intern in internals],
                         *list(mappings.keys()),
-                        *externals,
                         "max",
                         "min",
                         "last",
@@ -80,6 +65,21 @@ class EnergyDataLoader:
             .sort(polars.col(date_col))
             .collect()
         )
+
+        if externals is None:
+            externals = []
+        else:
+            self.frame = self.frame.join(
+                    polars.scan_csv(
+                        f"{source}/external.csv",
+                        separator=",",
+                        has_header=True,
+                        infer_schema_length=10000,
+                    ).select(polars.col([date_col, hour_col, *externals])),
+                    on={date_col, hour_col},
+                    how="left",
+                )
+        
         if hour is None:
             self.frame = (
                 self.frame
