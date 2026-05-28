@@ -84,7 +84,7 @@ class EnergyDataLoader:
             self.frame = (
                 self.frame
                 .group_by(date_col).agg(
-                    polars.all().exclude("date_col", "hour_col", "weekday").mean(),
+                    polars.all().exclude([date_col, hour_col, "weekday"].mean(),
                     polars.col("weekday").first()
                 )
             )
