@@ -19,6 +19,7 @@ class Transform(ABC):
         self.loc[var] = loc
 
     def set_scale(self, scale, var: int):
+        scale = max(scale, 1e-6)
         self.scale[var] = scale
 
     def unset(self, var: int):
