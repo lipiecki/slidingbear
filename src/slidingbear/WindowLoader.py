@@ -151,8 +151,6 @@ class WindowLoader:
 
         data = self.frame.slice(index - self.maxlag, self.maxlag + horizon)
     
-        transform_expressions = []
-
         if self.transform_target:
             data = data.with_columns(self.transform.forward(polars.col(self.target), -1).alias(self.target))
 
