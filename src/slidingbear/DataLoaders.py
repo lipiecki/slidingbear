@@ -73,7 +73,9 @@ class EnergyDataLoader:
                     separator=",",
                     has_header=True,
                     infer_schema_length=10000,
-                ).select(polars.col([date_col, hour_col, *externals])),
+                    )
+                    .select(polars.col([date_col, hour_col, *externals]))
+                    .collect(),
                 on={date_col, hour_col},
                 how="left",
             )
