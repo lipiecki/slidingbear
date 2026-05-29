@@ -44,11 +44,11 @@ class EnergyDataLoader:
                     for map_to, map_from in mappings.items()
                 ]
             )
-            .filter(polars.col(hour_col) == hour if hour is not None else True)
             .select(
                 polars.col(
                     [
                         date_col,
+                        hour_col,
                         main_col,
                         *internals,
                         *list(mappings.keys()),
@@ -88,6 +88,8 @@ class EnergyDataLoader:
                     polars.col("weekday").first()
                 )
             )
+        else:
+            self.frame = self.frame.filter(polars.col(hour_col) == hour).drop(hour_col)
 
         self.main_col = main_col
         self.date_col = date_col
