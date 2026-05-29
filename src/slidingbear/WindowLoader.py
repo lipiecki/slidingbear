@@ -57,6 +57,9 @@ class WindowLoader:
         self.frame: polars.DateFrame = data.select(
             polars.col([self.id, self.target] + self.exogenous)
         )
+        self.frame = self.frame.with_columns(
+            polars.col(self.target).alias(f"{self.target}_raw")
+        )
         self.transform_name: str = transform
         self.transform = match_transform(self.transform_name)(len(self.exogenous) + 1)
         self.got_window: bool = False
@@ -73,8 +76,7 @@ class WindowLoader:
 
     def get_window(self, index: int, window: int):
         data = self.frame.slice(index - window - self.maxlag, window + self.maxlag)
-        data = data.with_columns(polars.col(self.target).alias(f"{self.target}_raw"))
-
+        
         polars_expressions = []
         if self.transform_target:
             if len(self.autolags) > 1:
@@ -83,14 +85,9 @@ class WindowLoader:
                 auto_maxlag = self.autolags[0]
             else:
                 auto_maxlag = 0
-            series = (
-                data.select(polars.col(self.target))
-                .tail(window + auto_maxlag)
-                .to_numpy()
-                .ravel()
-            )
-            mu = numpy.mean(series)
-            sigma = numpy.std(series, ddof=1)
+            series = data.select(polars.col(self.target)).tail(window + auto_maxlag)
+            mu = series.mean().item()
+            sigma = series.std(ddof=1).item()
             self.transform.set_loc(mu, -1)
             self.transform.set_scale(sigma, -1)
             polars_expressions.append(
@@ -108,14 +105,10 @@ class WindowLoader:
                 else:
                     var_minlag = 0
                     var_maxlag = 0
-                series = (
-                    data.select(polars.col(var))
-                    .slice(self.maxlag - var_maxlag, window + var_maxlag - var_minlag)
-                    .to_numpy()
-                    .ravel()
-                )
-                mu = numpy.mean(series)
-                sigma = numpy.std(series, ddof=1)
+              
+                series = data.select(polars.col(var)).slice(self.maxlag - var_maxlag, window + var_maxlag - var_minlag)
+                mu = series.mean().item()
+                sigma = series.std(ddof=1).item()
                 self.transform.set_loc(mu, i)
                 self.transform.set_scale(sigma, i)
                 polars_expressions.append(
@@ -147,12 +140,17 @@ class WindowLoader:
             ],
         ).to_numpy()
         y = data.select(polars.col(self.target)).to_numpy()  # post transformation
-        yraw = data.select(
+        y_raw = data.select(
             polars.col(f"{self.target}_raw")
         ).to_numpy()  # pre transformation
 
         self.got_window = True
-        return x, y, yraw
+        return {
+            "X": x,
+            "Y": y,
+            "Y_raw": y_raw,
+            "id": data.select(polars.col(self.id)).to_numpy().ravel(),
+        }
 
     def get_future(self, index: int, horizon: int):
         assert self.got_window, (
@@ -160,8 +158,7 @@ class WindowLoader:
         )
 
         data = self.frame.slice(index - self.maxlag, self.maxlag + horizon)
-        data = data.with_columns(polars.col(self.target).alias(f"{self.target}_raw"))
-
+    
         polars_expressions = []
 
         if self.transform_target:
@@ -199,11 +196,16 @@ class WindowLoader:
             ],
         ).to_numpy()
         y = data.select(polars.col(self.target)).to_numpy()  # post transformation
-        yraw = data.select(
+        y_raw = data.select(
             polars.col(f"{self.target}_raw")
         ).to_numpy()  # pre transformation
 
-        return x, y, yraw
+        return {
+            "X": x,
+            "Y": y,
+            "Y_raw": y_raw,
+            "id": data.select(polars.col(self.id)).to_numpy().ravel(),
+        }
 
     def invert_out(self, pred):
         assert self.got_window, (
