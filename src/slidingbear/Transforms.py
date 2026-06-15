@@ -48,14 +48,30 @@ class Asinh(Transform):
         self.scale = numpy.full(num_vars, 1.0)
 
     def forward(self, x, var: int):
-        return numpy.arcsinh((x - self.loc[var]) / self.scale[var])
+        z = (x - self.loc[var]) / self.scale[var]
+        return numpy.arcsinh(z)
 
     def backward(self, z, var: int):
         return numpy.sinh(z) * self.scale[var] + self.loc[var]
 
     def backward_scale(self, z, var: int):
         return numpy.sinh(z) * self.scale[var]
+    
+class BoxCox(Transform):
+    def __init__(self, num_vars: int, param: float = 0.5):
+        self.loc = numpy.full(num_vars, 0.0)
+        self.scale = numpy.full(num_vars, 1.0)
+        self.param = param
 
+    def forward(self, x, var: int):
+        z = (x - self.loc[var]) / self.scale[var]
+        return numpy.sign(z)*numpy.add(numpy.power(numpy.add(numpy.abs(z), 1), self.param), -1)/self.param
+
+    def backward(self, z, var: int):
+        return numpy.sign(z)*numpy.add(numpy.power(numpy.add(numpy.abs(z)*self.param, 1), 1/self.param), -1) * self.scale[var] + self.loc[var]
+
+    def backward_scale(self, z, var: int):
+        return numpy.sign(z)*numpy.add(numpy.power(numpy.add(numpy.abs(z)*self.param, 1), 1/self.param), -1) * self.scale[var]
 
 def match_transform(transform_name: str):
     match transform_name:
@@ -63,5 +79,7 @@ def match_transform(transform_name: str):
             return ZScore
         case "asinh":
             return Asinh
+        case "boxcox":
+            return BoxCox
         case _:
             return None
