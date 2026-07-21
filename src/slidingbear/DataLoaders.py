@@ -1,5 +1,5 @@
 import polars
-
+DAILY = ["max", "min", "last", "first", "weekday"]
 
 class EnergyDataLoader:
     def __init__(

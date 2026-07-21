@@ -30,3 +30,20 @@ class OrderedPairs(Hierarchy):
             for element2 in range(element1 + 1, base_items[-1] + 1):
                 self.mapping[key] = [element1, element2]
                 key += 1
+
+class OrderedBlockPairs(Hierarchy):
+    def __init__(self, size: int):
+        base_items = list(range(size))
+        block_sizes = [s + 1 for s in base_items if size % (s + 1) == 0]
+        self.mapping = {}
+        key = 0
+
+        for size in block_sizes:
+            chunks = [base_items[i : i + size] for i in range(0, len(base_items), size)]
+            for i in range(len(chunks)):
+                chunk1 = chunks[i]
+                for j in range(i + 1, len(chunks)):
+                    chunk2 = chunks[j]
+                    self.mapping[key] = [chunk1, chunk2]
+                    key += 1
+            
