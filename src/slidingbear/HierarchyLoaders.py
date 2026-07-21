@@ -25,7 +25,7 @@ class BlockEnergyDataLoader(HierarchyLoader):
         self.frame = (
             self.frame.group_by(polars.col(date_col))
             .agg(
-                polars.col("weekday").first(),
+                polars.col(DAILY).first(),
                 polars.all().exclude(date_col, *DAILY).mean(),
             )
             .sort(polars.col(date_col))
@@ -94,7 +94,7 @@ class BlockSpreadEnergyDataLoader(HierarchyLoader):
         first_frame = (
             first_frame.group_by(polars.col(date_col))
             .agg(
-                polars.col("weekday").first(),
+                polars.col(DAILY).first(),
                 polars.all().exclude(date_col, *DAILY).mean(),
             )
             .sort(polars.col(date_col))
@@ -103,7 +103,7 @@ class BlockSpreadEnergyDataLoader(HierarchyLoader):
         second_frame = (
             second_frame.group_by(polars.col(date_col))
             .agg(
-                polars.col("weekday").first(),
+                polars.col(DAILY).first(),
                 polars.all().exclude(date_col, *DAILY).mean(),
             )
             .sort(polars.col(date_col))
