@@ -47,6 +47,8 @@ class EnergyDataLoader:
             .with_columns(
                 *[polars.col(var).max().over(date_col).alias(var + "_max") for var in internals + list(mappings.keys())],
                 *[polars.col(var).min().over(date_col).alias(var + "_min") for var in internals + list(mappings.keys())],
+                *[polars.col(var).first().over(date_col).alias(var + "_first") for var in internals + list(mappings.keys())],
+                *[polars.col(var).last().over(date_col).alias(var + "_last") for var in internals + list(mappings.keys())],
             )
             .select(
                 polars.col(
@@ -62,6 +64,8 @@ class EnergyDataLoader:
                         "first",
                         * [var + "_max" for var in internals + list(mappings.keys())],
                         * [var + "_min" for var in internals + list(mappings.keys())],
+                        * [var + "_first" for var in internals + list(mappings.keys())],
+                        * [var + "_last" for var in internals + list(mappings.keys())],
                         "weekday",
                     ]
                 )
