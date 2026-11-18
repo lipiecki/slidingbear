@@ -107,4 +107,4 @@ class EnergyDataLoader:
         self.externals = [*externals]
 
     def get(self):
-        return self.frame
+        return self.frame.sort(self.date_col)
